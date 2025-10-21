@@ -9,7 +9,7 @@ services:
       - "18080:8080"
       - "50000:50000"
     volumes:
-      - jenkins_home:/var/jenkins_home
+      - ./volumes/jenkins:/var/jenkins_home
       - /var/run/docker.sock:/var/run/docker.sock
     networks:
       - mlops-net
@@ -26,7 +26,7 @@ services:
       - "9000:9000"
       - "9001:9001"
     volumes:
-      - minio_data:/data
+      - ./volumes/minio:/data
     networks:
       - mlops-net
 
@@ -37,7 +37,7 @@ services:
     ports:
       - "5001:5000"
     volumes:
-      - registry_data:/var/lib/registry
+      - ./volumes/registry:/var/lib/registry
     networks:
       - mlops-net
 
@@ -52,7 +52,7 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - ./volumes/postgres:/var/lib/postgresql/data
     networks:
       - mlops-net
     healthcheck:
@@ -68,6 +68,8 @@ services:
       - "5000:5000"
     env_file:
       - .env
+    volumes:
+      - ./volumes/mlflow:/home/mlflow
     entrypoint: >
       mlflow server
       --backend-store-uri postgresql+psycopg2://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
@@ -84,8 +86,3 @@ networks:
   mlops-net:
     driver: bridge
 
-volumes:
-  jenkins_home:
-  minio_data:
-  postgres_data:
-  registry_data:
