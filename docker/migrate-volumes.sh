@@ -16,18 +16,34 @@ declare -A VOLUME_MAP=(
 mkdir -p "$TARGET_ROOT"
 
 for volume in "${!VOLUME_MAP[@]}"; do
+  dest_dir="${TARGET_ROOT}/${VOLUME_MAP[$volume]}"
+  mkdir -p "$dest_dir"
+
   if docker volume inspect "$volume" >/dev/null 2>&1; then
-    dest_dir="${TARGET_ROOT}/${VOLUME_MAP[$volume]}"
-    mkdir -p "$dest_dir"
     echo "Copying volume '$volume' to '$dest_dir'..."
     docker run --rm \
       -v "${volume}:/source" \
       -v "${dest_dir}:/dest" \
       alpine:3.19 \
       sh -c "cp -a /source/. /dest/"
+
+    echo "Removing original volume '$volume'..."
+    docker volume rm "$volume" >/dev/null || {
+      echo "Failed to remove volume '$volume'. Make sure all containers are stopped." >&2
+      exit 1
+    }
   else
-    echo "Skipping volume '$volume' (not found)."
+    echo "Volume '$volume' not found. Preparing fresh bind mount at '$dest_dir'."
   fi
+
+  echo "Creating volume '$volume' bound to '$dest_dir'..."
+  docker volume create \
+    --driver local \
+    --opt type=none \
+    --opt o=bind \
+    --opt device="$dest_dir" \
+    "$volume" >/dev/null
+
 done
 
-echo "Migration complete. Update docker-compose.yml to use bind mounts pointing to '$TARGET_ROOT'."
+echo "Migration complete. Named volumes now point to '$TARGET_ROOT'."
